@@ -8,7 +8,7 @@ pipeline {
 
   environment {
     // Format imposé : nomprenom_classe_nomProjet, en minuscules
-    IMAGE = 'nabliaous_classe_gestionprojets'
+    IMAGE = 'nabliaous_5arctic8_gestionprojets'
   }
 
   stages {
