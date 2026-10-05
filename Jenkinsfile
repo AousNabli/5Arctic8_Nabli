@@ -7,7 +7,7 @@ pipeline {
   }
 
   environment {
-    DOCKERHUB_USER = 'VOTRE_USER_DOCKERHUB'
+    DOCKERHUB_USER = 'aousnabli'
     IMAGE = "${DOCKERHUB_USER}/nabliaous_5arctic8_gestionprojets"
   }
 
