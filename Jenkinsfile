@@ -87,7 +87,7 @@ pipeline {
         dir('frontend') {
           sh '''
             docker run --rm -u $(id -u):$(id -g) -e HOME=/tmp \
-              -v "$PWD":/app -w /app node:20 \
+              -v "$PWD":/app -w /app node:24 \
               sh -c "if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build"
           '''
         }
