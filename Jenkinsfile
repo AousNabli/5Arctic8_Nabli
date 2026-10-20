@@ -9,6 +9,8 @@ pipeline {
   environment {
     DOCKERHUB_USER = 'aousnabli'
     IMAGE = "${DOCKERHUB_USER}/nabliaous_5arctic8_gestionprojets"
+    FRONTEND_IMAGE = "${DOCKERHUB_USER}/nabliaous_5arctic8_gestionprojets_frontend"
+    KUBECONFIG = '/var/lib/jenkins/kubeconfig-minikube.yaml'
   }
 
   stages {
@@ -146,6 +148,45 @@ pipeline {
           wait_for http://localhost:9090/-/ready
           wait_for http://localhost:3000/api/health
           echo "Application, Prometheus et Grafana répondent"
+        '''
+      }
+    }
+
+    stage('Docker Frontend') {
+      when {
+        expression { fileExists('frontend/Dockerfile') }
+      }
+      steps {
+        sh 'docker build -t $FRONTEND_IMAGE:latest -t $FRONTEND_IMAGE:$BUILD_NUMBER frontend'
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+          sh 'echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin'
+          sh 'docker push $FRONTEND_IMAGE:latest'
+          sh 'docker push $FRONTEND_IMAGE:$BUILD_NUMBER'
+          sh 'docker logout'
+        }
+      }
+    }
+
+    stage('Kubernetes Deploy') {
+      steps {
+        sh '''
+          kubectl get nodes
+          kubectl create namespace devops --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -n devops -f k8s/mysql-deployment.yaml
+          sed "s#__BACKEND_IMAGE__#$IMAGE:$BUILD_NUMBER#" k8s/spring-deployment.yaml | kubectl apply -n devops -f -
+          sed "s#__FRONTEND_IMAGE__#$FRONTEND_IMAGE:$BUILD_NUMBER#" k8s/frontend-deployment.yaml | kubectl apply -n devops -f -
+        '''
+      }
+    }
+
+    stage('Vérification Kubernetes') {
+      steps {
+        sh '''
+          kubectl rollout status deployment/mysql -n devops --timeout=180s
+          kubectl rollout status deployment/spring -n devops --timeout=300s
+          kubectl rollout status deployment/frontend -n devops --timeout=120s
+          kubectl get pods -n devops
+          kubectl get svc -n devops
         '''
       }
     }
